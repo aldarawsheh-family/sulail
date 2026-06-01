@@ -21,10 +21,23 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
   const [checking, setChecking] = useState(true);
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [currentBranch, setCurrentBranch] = useState(branch);
 
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 2000);
+  }
+
+  async function handleUpdateBranch(updatedFields) {
+    const res = await fetch(`/api/branches/${currentBranch.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedFields),
+    });
+    const data = await res.json();
+    if (res.ok && data) {
+      setCurrentBranch(prev => ({ ...prev, ...updatedFields }));
+    }
   }
 
   useEffect(() => {
@@ -37,12 +50,12 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
 
   useEffect(() => {
     async function loadPersons() {
-      const res = await fetch(`/api/persons?branchId=${branch?.id}`);
+      const res = await fetch(`/api/persons?branchId=${currentBranch?.id}`);
       const data = await res.json();
       setPersons(data || []);
     }
-    if (branch?.id && authenticated) loadPersons();
-  }, [branch?.id, authenticated]);
+    if (currentBranch?.id && authenticated) loadPersons();
+  }, [currentBranch?.id, authenticated]);
 
   async function handleLogin() {
     setError("");
@@ -58,7 +71,7 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
     }
 
     try {
-      const res = await fetch(`/api/branches/${branch.id}/verify`, {
+      const res = await fetch(`/api/branches/${currentBranch.id}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: fullNameToSend, password: password.trim() }),
@@ -95,7 +108,7 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
       display_name: displayName,
       birth_year: newPerson.birth_year || "",
       status: newPerson.status || "حي أطال الله بعمره",
-      branch_id: branch.id,
+      branch_id: currentBranch.id,
     };
 
     if (addMode?.type === "son") {
@@ -118,7 +131,7 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
         body: JSON.stringify({
           full_name: fullName, display_name: displayName, first_name: fullName,
           birth_year: newPerson.birth_year || "", status: newPerson.status || "حي أطال الله بعمره",
-          branch_id: branch.id,
+          branch_id: currentBranch.id,
         }),
       });
       const newFather = await res.json();
@@ -181,14 +194,12 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
 
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-body">
-      {/* رسالة التأكيد المنبثقة */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-[#4CAF50] text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-bold animate-slideDown">
           ✅ {toast}
         </div>
       )}
 
-      {/* نافذة تأكيد الحذف */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#0A1628]/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
@@ -212,41 +223,12 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
         <div className="flex items-center justify-center min-h-screen px-4 bg-gradient-to-b from-[#1A2A4A] to-[#0A1628]">
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl border border-[#B49450]/20 p-8 max-w-md w-full text-center">
             <div className="text-5xl mb-4">🔒</div>
-            <h1 className="text-2xl font-heading font-bold text-white mb-2">{branch.name}</h1>
+            <h1 className="text-2xl font-heading font-bold text-white mb-2">{currentBranch.name}</h1>
             <p className="text-white/50 text-sm mb-6">هذا الفرع خاص. أدخل بياناتك للمتابعة</p>
-            
-            <input 
-              type="text" 
-              placeholder="الاسم الثنائي (فلان بن فلان)" 
-              value={name} 
-              onChange={(e) => {
-                setName(e.target.value);
-                setNeedGrandfather(false);
-                setGrandfather("");
-              }} 
-              className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-4 text-white placeholder:text-white/30" 
-            />
-            
-            {needGrandfather && (
-              <input 
-                type="text" 
-                placeholder="اسم الجد (للتمييز)" 
-                value={grandfather} 
-                onChange={(e) => setGrandfather(e.target.value)} 
-                className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/50 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-4 text-white placeholder:text-white/50" 
-              />
-            )}
-            
-            <input 
-              type="password" 
-              placeholder="كلمة سر الفرع" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-2 text-white placeholder:text-white/30" 
-            />
-            
+            <input type="text" placeholder="الاسم الثنائي (فلان بن فلان)" value={name} onChange={(e) => { setName(e.target.value); setNeedGrandfather(false); setGrandfather(""); }} className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-4 text-white placeholder:text-white/30" />
+            {needGrandfather && <input type="text" placeholder="اسم الجد (للتمييز)" value={grandfather} onChange={(e) => setGrandfather(e.target.value)} className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/50 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-4 text-white placeholder:text-white/50" />}
+            <input type="password" placeholder="كلمة سر الفرع" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3.5 bg-white/10 border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition mb-2 text-white placeholder:text-white/30" />
             {error && <p className={`text-xs mb-3 ${error.includes("⚠️") ? "text-amber-400" : "text-red-400"}`}>{error}</p>}
-            
             <button onClick={handleLogin} className="w-full bg-[#B49450] text-white py-3.5 rounded-2xl font-bold hover:bg-[#D4AF37] transition mt-2">🔓 دخول</button>
             <p className="text-white/20 text-[10px] mt-4">⚠️ للأفراد المسجلين فقط</p>
           </div>
@@ -257,144 +239,50 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
             <div className="flex items-center gap-3">
               <a href={`/tribes/${tribeId}/clans/${clanId}/lineages/${lineageId}/subclans/${subclanId}`} className="text-white/50 hover:text-white text-sm transition">⬅ العودة للعشيرة</a>
               <span className="text-white/20">|</span>
-              <h1 className="text-white font-heading font-bold text-lg">🍃 {branch.name}</h1>
+              <h1 className="text-white font-heading font-bold text-lg">🍃 {currentBranch.name}</h1>
               <span className="text-white/30 text-xs">• {persons.length} فرد</span>
             </div>
           </div>
 
-          {/* نافذة الإضافة */}
           {addMode && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onMouseDown={(e) => { if (e.target === e.currentTarget) setAddMode(null); }}
-            >
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setAddMode(null); }}>
               <div className="absolute inset-0 bg-[#0A1628]/50 backdrop-blur-sm" onClick={() => setAddMode(null)} />
-              
-              <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#B49450]/30"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
+              <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#B49450]/30" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="bg-gradient-to-r from-[#B49450] to-[#D4AF37] px-6 py-4 text-center">
                   <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white/20 flex items-center justify-center text-2xl">
                     {addMode.type === "son" ? "👶" : addMode.type === "brother" ? "👬" : addMode.type === "father" ? "👆" : "🌳"}
                   </div>
                   <h3 className="text-white font-heading font-bold text-lg">
-                    {addMode.type === "son" ? `إضافة ابن لـ ${addMode.person.display_name || addMode.person.full_name}` :
-                     addMode.type === "brother" ? `إضافة أخ لـ ${addMode.person.display_name || addMode.person.full_name}` :
-                     addMode.type === "father" ? `إضافة أب لـ ${addMode.person.display_name || addMode.person.full_name}` :
-                     `إضافة جد الفرع`}
+                    {addMode.type === "son" ? `إضافة ابن لـ ${addMode.person.display_name || addMode.person.full_name}` : addMode.type === "brother" ? `إضافة أخ لـ ${addMode.person.display_name || addMode.person.full_name}` : addMode.type === "father" ? `إضافة أب لـ ${addMode.person.display_name || addMode.person.full_name}` : `إضافة جد الفرع`}
                   </h3>
                 </div>
                 <div className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-bold text-[#0A1628] mb-1">اسم العرض <span className="text-red-500">*</span></label>
-                    <input 
-                      placeholder="مثال: محمد" 
-                      value={newPerson.display_name} 
-                      onChange={(e) => setNewPerson({ ...newPerson, display_name: e.target.value })} 
-                      className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-[#0A1628] mb-1">الاسم الكامل</label>
-                    <input 
-                      placeholder="اختياري - مثال: محمد بن أحمد" 
-                      value={newPerson.full_name} 
-                      onChange={(e) => setNewPerson({ ...newPerson, full_name: e.target.value })} 
-                      className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" 
-                    />
-                  </div>
+                  <div><label className="block text-sm font-bold text-[#0A1628] mb-1">اسم العرض <span className="text-red-500">*</span></label><input placeholder="مثال: محمد" value={newPerson.display_name} onChange={(e) => setNewPerson({ ...newPerson, display_name: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" /></div>
+                  <div><label className="block text-sm font-bold text-[#0A1628] mb-1">الاسم الكامل</label><input placeholder="اختياري - مثال: محمد بن أحمد" value={newPerson.full_name} onChange={(e) => setNewPerson({ ...newPerson, full_name: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-bold text-[#0A1628] mb-1">سنة الميلاد</label>
-                      <input 
-                        placeholder="مثال: 1980" 
-                        value={newPerson.birth_year} 
-                        onChange={(e) => setNewPerson({ ...newPerson, birth_year: e.target.value })} 
-                        className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-[#0A1628] mb-1">الحالة</label>
-                      <select 
-                        value={newPerson.status} 
-                        onChange={(e) => setNewPerson({ ...newPerson, status: e.target.value })} 
-                        className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628]"
-                      >
-                        <option value="حي أطال الله بعمره">حي أطال الله بعمره</option>
-                        <option value="انتقل إلى رحمة الله">انتقل إلى رحمة الله</option>
-                        <option value="شهيد بإذن الله">شهيد بإذن الله</option>
-                      </select>
-                    </div>
+                    <div><label className="block text-sm font-bold text-[#0A1628] mb-1">سنة الميلاد</label><input placeholder="مثال: 1980" value={newPerson.birth_year} onChange={(e) => setNewPerson({ ...newPerson, birth_year: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628] placeholder:text-[#8A95A4]" /></div>
+                    <div><label className="block text-sm font-bold text-[#0A1628] mb-1">الحالة</label><select value={newPerson.status} onChange={(e) => setNewPerson({ ...newPerson, status: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#B49450]/20 rounded-2xl text-right outline-none focus:border-[#B49450] transition text-[#0A1628]"><option value="حي أطال الله بعمره">حي أطال الله بعمره</option><option value="انتقل إلى رحمة الله">انتقل إلى رحمة الله</option><option value="شهيد بإذن الله">شهيد بإذن الله</option></select></div>
                   </div>
                 </div>
-                <div className="px-6 pb-6 flex gap-3">
-                  <button onClick={handleAddPerson} className="flex-1 bg-[#B49450] text-white py-3.5 rounded-2xl font-bold hover:bg-[#D4AF37] transition shadow-lg">💾 حفظ</button>
-                  <button onClick={() => setAddMode(null)} className="flex-1 bg-[#F5F0E8] text-[#5D4037] py-3.5 rounded-2xl font-bold hover:bg-[#E8E0D0] transition">إلغاء</button>
-                </div>
+                <div className="px-6 pb-6 flex gap-3"><button onClick={handleAddPerson} className="flex-1 bg-[#B49450] text-white py-3.5 rounded-2xl font-bold hover:bg-[#D4AF37] transition shadow-lg">💾 حفظ</button><button onClick={() => setAddMode(null)} className="flex-1 bg-[#F5F0E8] text-[#5D4037] py-3.5 rounded-2xl font-bold hover:bg-[#E8E0D0] transition">إلغاء</button></div>
               </div>
             </div>
           )}
 
-          {/* نافذة التعديل */}
           {editPerson && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onMouseDown={(e) => { if (e.target === e.currentTarget) setEditPerson(null); }}
-            >
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setEditPerson(null); }}>
               <div className="absolute inset-0 bg-[#0A1628]/50 backdrop-blur-sm" onClick={() => setEditPerson(null)} />
-              
-              <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border-2 border-[#D4AF37]"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="bg-gradient-to-r from-[#1A3A5C] to-[#2B5F8E] px-6 py-4 text-center">
-                  <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white/20 flex items-center justify-center text-2xl">✏️</div>
-                  <h3 className="text-white font-heading font-bold text-lg">تعديل: {editPerson.display_name || editPerson.full_name}</h3>
-                </div>
+              <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border-2 border-[#D4AF37]" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-[#1A3A5C] to-[#2B5F8E] px-6 py-4 text-center"><div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white/20 flex items-center justify-center text-2xl">✏️</div><h3 className="text-white font-heading font-bold text-lg">تعديل: {editPerson.display_name || editPerson.full_name}</h3></div>
                 <div className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-bold text-[#0A1628] mb-1">اسم العرض <span className="text-red-500">*</span></label>
-                    <input 
-                      placeholder="اسم العرض" 
-                      value={editPerson.display_name || ""} 
-                      onChange={(e) => setEditPerson({ ...editPerson, display_name: e.target.value })} 
-                      className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-[#0A1628] mb-1">الاسم الكامل</label>
-                    <input 
-                      placeholder="الاسم الكامل" 
-                      value={editPerson.full_name || ""} 
-                      onChange={(e) => setEditPerson({ ...editPerson, full_name: e.target.value })} 
-                      className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" 
-                    />
-                  </div>
+                  <div><label className="block text-sm font-bold text-[#0A1628] mb-1">اسم العرض <span className="text-red-500">*</span></label><input placeholder="اسم العرض" value={editPerson.display_name || ""} onChange={(e) => setEditPerson({ ...editPerson, display_name: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" /></div>
+                  <div><label className="block text-sm font-bold text-[#0A1628] mb-1">الاسم الكامل</label><input placeholder="الاسم الكامل" value={editPerson.full_name || ""} onChange={(e) => setEditPerson({ ...editPerson, full_name: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-bold text-[#0A1628] mb-1">سنة الميلاد</label>
-                      <input 
-                        placeholder="سنة الميلاد" 
-                        value={editPerson.birth_year || ""} 
-                        onChange={(e) => setEditPerson({ ...editPerson, birth_year: e.target.value })} 
-                        className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-[#0A1628] mb-1">الحالة</label>
-                      <select 
-                        value={editPerson.status || "حي أطال الله بعمره"} 
-                        onChange={(e) => setEditPerson({ ...editPerson, status: e.target.value })} 
-                        className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]"
-                      >
-                        <option value="حي أطال الله بعمره">حي أطال الله بعمره</option>
-                        <option value="انتقل إلى رحمة الله">انتقل إلى رحمة الله</option>
-                        <option value="شهيد بإذن الله">شهيد بإذن الله</option>
-                      </select>
-                    </div>
+                    <div><label className="block text-sm font-bold text-[#0A1628] mb-1">سنة الميلاد</label><input placeholder="سنة الميلاد" value={editPerson.birth_year || ""} onChange={(e) => setEditPerson({ ...editPerson, birth_year: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]" /></div>
+                    <div><label className="block text-sm font-bold text-[#0A1628] mb-1">الحالة</label><select value={editPerson.status || "حي أطال الله بعمره"} onChange={(e) => setEditPerson({ ...editPerson, status: e.target.value })} className="w-full px-4 py-3 bg-[#FDFBF7] border-2 border-[#D4AF37]/30 rounded-2xl text-right outline-none focus:border-[#D4AF37] transition text-[#0A1628]"><option value="حي أطال الله بعمره">حي أطال الله بعمره</option><option value="انتقل إلى رحمة الله">انتقل إلى رحمة الله</option><option value="شهيد بإذن الله">شهيد بإذن الله</option></select></div>
                   </div>
                 </div>
-                <div className="px-6 pb-6 flex gap-3">
-                  <button onClick={handleEditPerson} className="flex-1 bg-[#2B5F8E] text-white py-3.5 rounded-2xl font-bold hover:bg-[#1A3A5C] transition shadow-lg">💾 حفظ التعديل</button>
-                  <button onClick={() => setEditPerson(null)} className="flex-1 bg-[#F5F0E8] text-[#5D4037] py-3.5 rounded-2xl font-bold hover:bg-[#E8E0D0] transition">إلغاء</button>
-                </div>
+                <div className="px-6 pb-6 flex gap-3"><button onClick={handleEditPerson} className="flex-1 bg-[#2B5F8E] text-white py-3.5 rounded-2xl font-bold hover:bg-[#1A3A5C] transition shadow-lg">💾 حفظ التعديل</button><button onClick={() => setEditPerson(null)} className="flex-1 bg-[#F5F0E8] text-[#5D4037] py-3.5 rounded-2xl font-bold hover:bg-[#E8E0D0] transition">إلغاء</button></div>
               </div>
             </div>
           )}
@@ -406,6 +294,8 @@ export default function BranchTreeClient({ branch, persons: initialPersons, trib
             onEdit={setEditPerson}
             onDelete={handleDeletePerson}
             onAdd={handleAdd}
+            branch={currentBranch}
+            onUpdateBranch={handleUpdateBranch}
           />
         </div>
       )}
