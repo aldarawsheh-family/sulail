@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heading: 'Reem Kufi', sans-serif;
+  --font-body: 'Tajawal', sans-serif;
+}
+
+/* تحسين وضوح النصوص العربية */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  line-height: 1.5;
+}
+@import "tailwindcss";
+
+@theme {
+  --font-heading: 'Reem Kufi', sans-serif;
+  --font-body: 'Tajawal', sans-serif;
+}/* تحسين وضوح النص الرمادي */
+.text-\[\#5A6B7F\] {
+  color: #3A4B5F !important;
+}
+
+.text-\[\#A8B5C4\] {
+  color: #8A95A4 !important;
+}
