@@ -28,12 +28,13 @@ function countStatus(persons, person, keyword) {
   return kids.reduce((s, c) => s + countStatus(persons, c, keyword), 0) + self;
 }
 
+// صناديق أكبر
 const GEN = [
-  { w: 150, h: 100, gapX: 44, gapY: 170 },
-  { w: 120, h: 82,  gapX: 30, gapY: 140 },
-  { w: 96,  h: 66,  gapX: 22, gapY: 118 },
-  { w: 76,  h: 52,  gapX: 14, gapY: 96 },
-  { w: 60,  h: 42,  gapX: 10, gapY: 78 },
+  { w: 170, h: 110, gapX: 50, gapY: 180 },
+  { w: 140, h: 92,  gapX: 36, gapY: 150 },
+  { w: 110, h: 74,  gapX: 26, gapY: 126 },
+  { w: 88,  h: 60,  gapX: 18, gapY: 104 },
+  { w: 70,  h: 48,  gapX: 12, gapY: 86 },
 ];
 function cfg(g) { return GEN[Math.min(g, GEN.length - 1)]; }
 
@@ -73,18 +74,16 @@ function getUncles(persons, p) {
   return persons.filter(x => x.father_id === f.father_id && x.id !== f.id).map(x => x.display_name || x.full_name).join('، ') || 'لا يوجد';
 }
 
-// ========== ألوان رجولية فاخرة ==========
+// ألوان الأجيال
 const genColors = [
-  { bg: ['#1A2A3A', '#0F1D2D'], stroke: '#D4AF37', text: '#FFD700', icon: '#D4AF37' },  // الجيل 0: أزرق غامق + ذهبي
-  { bg: ['#2B3A4A', '#1A2A3A'], stroke: '#B49450', text: '#E0D0A0', icon: '#C9A84C' },  // الجيل 1
-  { bg: ['#3A4A5A', '#2B3A4A'], stroke: '#A08040', text: '#D0C0A0', icon: '#B89450' },  // الجيل 2
-  { bg: ['#4A5A6A', '#3A4A5A'], stroke: '#907030', text: '#C0B090', icon: '#A08040' },  // الجيل 3
-  { bg: ['#5A6A7A', '#4A5A6A'], stroke: '#806020', text: '#B0A080', icon: '#907030' },  // الجيل 4
+  { bg: ['#1A2A4A', '#12243A'], stroke: '#D4AF37', text: '#FFD700', icon: '#D4AF37' },
+  { bg: ['#1F3050', '#152840'], stroke: '#C9A84C', text: '#E8D090', icon: '#C9A84C' },
+  { bg: ['#243656', '#1A2C46'], stroke: '#B89450', text: '#D0C080', icon: '#B89450' },
+  { bg: ['#293C5C', '#1F3050'], stroke: '#A08040', text: '#B8B070', icon: '#A08040' },
+  { bg: ['#2E4262', '#243656'], stroke: '#907030', text: '#A0A060', icon: '#907030' },
 ];
 
-function getGenColors(gen) {
-  return genColors[Math.min(gen, genColors.length - 1)];
-}
+function getGenColors(gen) { return genColors[Math.min(gen, genColors.length - 1)]; }
 
 export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, branch, onUpdateBranch }) {
   const [sel, setSel] = useState(null);
@@ -152,7 +151,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
       return m;
     }
     const totalW = getWeight(persons, root);
-    const w = Math.max(700, totalW * 140);
+    const w = Math.max(700, totalW * 150);
     const l = layout(root, 0, w / 2, 80, w, false);
     setLay(l); setTw(w); setTh(Math.max(400, height(l) + 80));
   }, [persons, collapsed]);
@@ -183,14 +182,14 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
       ctx.beginPath(); ctx.moveTo(sx, sy);
       if (d) ctx.lineTo(ex, ey); else ctx.bezierCurveTo(sx, my, ex, my, ex, ey);
       ctx.strokeStyle = lg ? '#FFD700' : gc.stroke + '40';
-      ctx.lineWidth = lg ? 7 : 4;
+      ctx.lineWidth = lg ? 8 : 5;
       ctx.shadowColor = lg ? '#FFD700' : 'transparent';
       ctx.shadowBlur = lg ? 25 : 0;
       ctx.stroke(); ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.moveTo(sx, sy);
       if (d) ctx.lineTo(ex, ey); else ctx.bezierCurveTo(sx, my, ex, my, ex, ey);
       ctx.strokeStyle = lg ? '#FFD700' : gc.stroke;
-      ctx.lineWidth = lg ? 2.5 : 1.5;
+      ctx.lineWidth = lg ? 3 : 2;
       ctx.stroke();
     }
     for (const ch of node.children) drawLines(ctx, ch);
@@ -199,7 +198,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
   function drawCards(ctx, node) {
     if (node._hidden) return;
     const c = cfg(node.gen);
-    const x = node.x - c.w / 2, y = node.y - c.h / 2, r = 12;
+    const x = node.x - c.w / 2, y = node.y - c.h / 2, r = 14;
     const g = isGlow(node.id);
     const gc = getGenColors(node.gen);
 
@@ -219,34 +218,34 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     ctx.fillStyle = grad; ctx.fill();
 
     ctx.strokeStyle = g ? '#FFD700' : gc.stroke;
-    ctx.lineWidth = g ? 2.5 : 1.5;
+    ctx.lineWidth = g ? 3 : 2;
     ctx.shadowColor = g ? '#FFD700' : 'transparent';
-    ctx.shadowBlur = g ? 20 : 0;
+    ctx.shadowBlur = g ? 25 : 0;
     ctx.stroke(); ctx.shadowBlur = 0;
 
-    // الأيقونة
+    // أيقونة
     ctx.fillStyle = gc.icon;
-    const iconSize = node.gen === 0 ? 22 : node.gen === 1 ? 18 : node.gen === 2 ? 14 : 11;
+    const iconSize = node.gen === 0 ? 26 : node.gen === 1 ? 22 : node.gen === 2 ? 18 : 14;
     ctx.font = `${iconSize}px 'Segoe UI', sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(icon(node), node.x, node.y - iconSize * 0.5);
 
-    // الاسم
+    // الاسم - أكبر وأوضح
     ctx.fillStyle = g ? '#1A0A00' : gc.text;
-    const ns = node.gen === 0 ? 15 : node.gen === 1 ? 13 : node.gen === 2 ? 11 : 9;
+    const ns = node.gen === 0 ? 18 : node.gen === 1 ? 16 : node.gen === 2 ? 14 : 12;
     ctx.font = `bold ${ns}px 'Cairo', sans-serif`;
     ctx.fillText(node.display_name || node.full_name || '', node.x, node.y + ns * 0.35);
     ctx.textAlign = 'start';
 
     const desc = countDescendants(persons, node);
     if (desc >= 55) {
-      const bx = node.x + c.w / 2 - 14, by = node.y + c.h / 2 - 14;
-      ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2);
+      const bx = node.x + c.w / 2 - 16, by = node.y + c.h / 2 - 16;
+      ctx.beginPath(); ctx.arc(bx, by, 13, 0, Math.PI * 2);
       ctx.fillStyle = gc.bg[0]; ctx.fill();
-      ctx.strokeStyle = gc.stroke; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = gc.stroke; ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'center'; ctx.fillText(collapsed[node.id] ? '+' : '−', bx, by + 4);
-      ctx.textAlign = 'start'; node._collapseBtn = { x: bx, y: by, r: 11 };
+      ctx.strokeStyle = gc.stroke; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = gc.stroke; ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center'; ctx.fillText(collapsed[node.id] ? '+' : '−', bx, by + 5);
+      ctx.textAlign = 'start'; node._collapseBtn = { x: bx, y: by, r: 13 };
     } else { node._collapseBtn = null; }
     for (const ch of node.children || []) drawCards(ctx, ch);
   }
@@ -287,7 +286,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     setTimeout(() => { setGlow([]); setGlowActive(false); setSel(p); }, anc.length * 500 + 1500);
   }
 
-  // ========== اللمس ==========
+  // اللمس - عتبة 15px للتمييز بين الضغط والسحب
   const handlePointerDown = useCallback((e) => {
     if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     setHasMoved(false);
@@ -301,7 +300,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     if (!dragging) return;
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) setHasMoved(true);
+    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) setHasMoved(true);
     setPan({ x: e.clientX - ds.current.x, y: e.clientY - ds.current.y });
   }, [dragging]);
 
@@ -372,24 +371,22 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
 
   return (
     <div ref={cr} className="relative"
-      style={{ minHeight: '100vh', height: '100vh', background: 'linear-gradient(180deg, #0A0F14 0%, #131A22 40%, #0A0F14 100%)', position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', touchAction: 'none' }}
+      style={{ minHeight: '100vh', height: '100vh', background: 'linear-gradient(180deg, #0C1828 0%, #12243A 40%, #0C1828 100%)', position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', touchAction: 'none' }}
       onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
       onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
-      {/* الشعار */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 text-center">
         <div style={{ color: '#D4AF37', fontSize: 18, fontWeight: 900, letterSpacing: 8, textShadow: '0 0 20px rgba(212,175,55,0.5)' }}>⚔️ سُلَيْل</div>
         <div style={{ color: '#B4945080', fontSize: 8, letterSpacing: 4, marginTop: 2 }}>الْمَنْصَةُ الرَّقَمِيَّةُ لِلْأَنْسَابِ</div>
       </div>
 
-      {/* بحث */}
       <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 w-[90%] max-w-[360px]">
-        <button onClick={() => setShowStats(true)} className="bg-[#131A22] border border-[#D4AF3740] text-[#D4AF37] px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1A2535] transition shadow-lg whitespace-nowrap">📊</button>
+        <button onClick={() => setShowStats(true)} className="bg-[#12243A]/90 border border-[#D4AF3740] text-[#D4AF37] px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#1A3055] transition shadow-lg whitespace-nowrap">📊</button>
         <input type="text" placeholder="🔍 ابحث عن اسم..." value={q} onChange={e => search(e.target.value)}
-          className="flex-1 px-5 py-3.5 bg-[#131A22]/95 backdrop-blur-xl border-2 border-[#D4AF3740] rounded-2xl text-right text-sm outline-none text-white placeholder:text-[#8A95A4] shadow-2xl focus:border-[#D4AF37] transition-all" />
+          className="flex-1 px-5 py-3.5 bg-[#12243A]/95 backdrop-blur-xl border-2 border-[#D4AF3740] rounded-2xl text-right text-sm outline-none text-white placeholder:text-[#8A95A4] shadow-2xl focus:border-[#D4AF37] transition-all" />
         {qr.length > 0 && (
-          <div className="absolute top-full mt-3 left-0 right-0 bg-[#131A22]/98 backdrop-blur-2xl border border-[#D4AF3730] rounded-2xl shadow-2xl overflow-hidden z-30 max-h-[50vh] overflow-y-auto">
+          <div className="absolute top-full mt-3 left-0 right-0 bg-[#12243A]/98 backdrop-blur-2xl border border-[#D4AF3730] rounded-2xl shadow-2xl overflow-hidden z-30 max-h-[50vh] overflow-y-auto">
             {qr.map(p => (
               <button key={p.id} onClick={() => go(p)} className="w-full text-right px-5 py-3.5 text-sm hover:bg-[#D4AF3715] transition border-b border-[#D4AF3710] last:border-0 text-white flex items-center gap-3">
                 <span className="text-lg">{icon(p)}</span><span>{getFullThreeNames(persons, p)}</span>
@@ -399,29 +396,27 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
         )}
       </div>
 
-      {/* أزرار التحكم السفلية */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-3 bg-[#131A22]/90 backdrop-blur-xl rounded-2xl px-4 py-3 border border-[#D4AF3740] shadow-2xl">
-        <button onClick={() => setScale(s => Math.min(2.5, s + 0.15))} className="w-12 h-12 bg-[#1A2535] rounded-xl shadow-lg text-[#D4AF37] font-bold text-xl border border-[#D4AF3740]">+</button>
-        <button onClick={() => setScale(s => Math.max(0.3, s - 0.15))} className="w-12 h-12 bg-[#1A2535] rounded-xl shadow-lg text-[#D4AF37] font-bold text-xl border border-[#D4AF3740]">−</button>
-        <button onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }} className="w-12 h-12 bg-[#1A2535] rounded-xl shadow-lg text-[#D4AF37] text-xs font-bold border border-[#D4AF3740]">↺</button>
-        <button onClick={() => window.history.back()} className="w-12 h-12 bg-[#1A2535] rounded-xl shadow-lg text-[#D4AF37] text-lg border border-[#D4AF3740]">←</button>
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-3 bg-[#12243A]/90 backdrop-blur-xl rounded-2xl px-4 py-3 border border-[#D4AF3740] shadow-2xl">
+        <button onClick={() => setScale(s => Math.min(2.5, s + 0.15))} className="w-12 h-12 bg-[#1A3055] rounded-xl shadow-lg text-[#D4AF37] font-bold text-xl border border-[#D4AF3740]">+</button>
+        <button onClick={() => setScale(s => Math.max(0.3, s - 0.15))} className="w-12 h-12 bg-[#1A3055] rounded-xl shadow-lg text-[#D4AF37] font-bold text-xl border border-[#D4AF3740]">−</button>
+        <button onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }} className="w-12 h-12 bg-[#1A3055] rounded-xl shadow-lg text-[#D4AF37] text-xs font-bold border border-[#D4AF3740]">↺</button>
+        <button onClick={() => window.history.back()} className="w-12 h-12 bg-[#1A3055] rounded-xl shadow-lg text-[#D4AF37] text-lg border border-[#D4AF3740]">←</button>
       </div>
 
       <canvas ref={cv}
         style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: 'top left', transition: dragging ? 'none' : 'transform 0.3s ease', touchAction: 'none' }} />
 
-      {/* نافذة الإحصائيات */}
       {showStats && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4" onClick={() => { setShowStats(false); setShowAddRoot(false); }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative bg-[#131A22] rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slideUp border border-[#D4AF3740]" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[#12243A] rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slideUp border border-[#D4AF3740]" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-[#D4AF37] to-[#B49450] px-6 py-4 text-center">
               <button onClick={() => setShowStats(false)} className="absolute top-4 right-4 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white text-sm">✕</button>
-              <h3 className="text-[#0A0F14] font-bold text-lg">📊 إحصائيات الفرع</h3>
+              <h3 className="text-[#0A1628] font-bold text-lg">📊 إحصائيات الفرع</h3>
             </div>
             <div className="p-6 space-y-5">
               {rootPerson && (
-                <div className="bg-[#1A2535] rounded-2xl p-4 text-center border border-[#D4AF3720]">
+                <div className="bg-[#1A3055] rounded-2xl p-4 text-center border border-[#D4AF3720]">
                   <p className="text-[#8A95A4] text-xs mb-1">الجذر الرئيسي</p>
                   <p className="text-white font-bold text-lg">{rootPerson.display_name || rootPerson.full_name}</p>
                   <div className="grid grid-cols-4 gap-2 mt-3">
@@ -433,8 +428,8 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
                   {isAdmin && (
                     <div className="mt-3">
                       <textarea value={branchStory} onChange={e => setBranchStory(e.target.value)} placeholder="نبذة عن الفرع الرئيسي..." rows={3}
-                        className="w-full px-4 py-2 bg-[#0A0F14] border border-[#D4AF3720] rounded-xl text-right text-xs text-white placeholder:text-[#8A95A4] resize-none" />
-                      <button onClick={saveStory} className="bg-[#D4AF37] text-[#0A0F14] px-4 py-2 rounded-xl text-xs font-bold mt-2">💾 حفظ</button>
+                        className="w-full px-4 py-2 bg-[#0A1628] border border-[#D4AF3720] rounded-xl text-right text-xs text-white placeholder:text-[#8A95A4] resize-none" />
+                      <button onClick={saveStory} className="bg-[#D4AF37] text-[#0A1628] px-4 py-2 rounded-xl text-xs font-bold mt-2">💾 حفظ</button>
                       {storySaved && <span className="text-[#4CAF50] text-xs mr-2">✅ تم الحفظ</span>}
                     </div>
                   )}
@@ -446,7 +441,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
                   const p = getPersonById(sr.person_id);
                   if (!p) return null;
                   return (
-                    <div key={sr.id} className="bg-[#1A2535] rounded-2xl p-4 mb-3 text-center border border-[#D4AF3720]">
+                    <div key={sr.id} className="bg-[#1A3055] rounded-2xl p-4 mb-3 text-center border border-[#D4AF3720]">
                       <p className="text-white font-bold text-sm">{sr.label || p.display_name || p.full_name}</p>
                       <div className="grid grid-cols-4 gap-2 mt-2">
                         <div><p className="text-[#D4AF37] font-bold">{1 + countDescendants(persons, p)}</p><p className="text-[#8A95A4] text-[9px]">إجمالي</p></div>
@@ -458,11 +453,11 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
                         <div className="mt-2">
                           {editingRootId === sr.id ? (
                             <div>
-                              <input type="text" value={editingRootLabel} onChange={e => setEditingRootLabel(e.target.value)} placeholder="اسم الفرع..." className="w-full px-4 py-2 bg-[#0A0F14] border border-[#D4AF3720] rounded-xl text-right text-xs text-white mb-2" />
-                              <textarea value={editingRootStory} onChange={e => setEditingRootStory(e.target.value)} rows={2} className="w-full px-4 py-2 bg-[#0A0F14] border border-[#D4AF3720] rounded-xl text-right text-xs text-white resize-none" />
+                              <input type="text" value={editingRootLabel} onChange={e => setEditingRootLabel(e.target.value)} placeholder="اسم الفرع..." className="w-full px-4 py-2 bg-[#0A1628] border border-[#D4AF3720] rounded-xl text-right text-xs text-white mb-2" />
+                              <textarea value={editingRootStory} onChange={e => setEditingRootStory(e.target.value)} rows={2} className="w-full px-4 py-2 bg-[#0A1628] border border-[#D4AF3720] rounded-xl text-right text-xs text-white resize-none" />
                               <div className="flex gap-2 justify-center mt-2">
-                                <button onClick={() => saveSubRootStory(sr.id, editingRootStory, editingRootLabel)} className="bg-[#D4AF37] text-[#0A0F14] px-3 py-1 rounded-lg text-xs font-bold">💾 حفظ</button>
-                                <button onClick={() => setEditingRootId(null)} className="bg-[#1A2535] text-white px-3 py-1 rounded-lg text-xs border border-[#D4AF3720]">إلغاء</button>
+                                <button onClick={() => saveSubRootStory(sr.id, editingRootStory, editingRootLabel)} className="bg-[#D4AF37] text-[#0A1628] px-3 py-1 rounded-lg text-xs font-bold">💾 حفظ</button>
+                                <button onClick={() => setEditingRootId(null)} className="bg-[#1A3055] text-white px-3 py-1 rounded-lg text-xs border border-[#D4AF3720]">إلغاء</button>
                               </div>
                             </div>
                           ) : (
@@ -479,10 +474,10 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
                 {isAdmin && (
                   <div className="text-center mt-3">
                     {!showAddRoot ? (
-                      <button onClick={() => setShowAddRoot(true)} className="bg-[#D4AF37] text-[#0A0F14] px-4 py-2 rounded-xl text-xs font-bold">➕ إضافة جذر فرعي</button>
+                      <button onClick={() => setShowAddRoot(true)} className="bg-[#D4AF37] text-[#0A1628] px-4 py-2 rounded-xl text-xs font-bold">➕ إضافة جذر فرعي</button>
                     ) : (
-                      <div className="bg-[#1A2535] rounded-2xl p-4 border border-[#D4AF3720]">
-                        <input type="text" placeholder="🔍 ابحث عن الشخص..." value={rootSearchQ} onChange={e => searchRoots(e.target.value)} className="w-full px-4 py-2 bg-[#0A0F14] border border-[#D4AF3740] rounded-xl text-right text-xs text-white mb-2" />
+                      <div className="bg-[#1A3055] rounded-2xl p-4 border border-[#D4AF3720]">
+                        <input type="text" placeholder="🔍 ابحث عن الشخص..." value={rootSearchQ} onChange={e => searchRoots(e.target.value)} className="w-full px-4 py-2 bg-[#0A1628] border border-[#D4AF3740] rounded-xl text-right text-xs text-white mb-2" />
                         {rootSearchResults.map(p => (
                           <button key={p.id} onClick={() => addSubRoot(p.id)} className="w-full text-right px-4 py-2 text-xs text-white hover:bg-[#D4AF3715] rounded-lg">{getFullThreeNames(persons, p)}</button>
                         ))}
@@ -497,20 +492,19 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
         </div>
       )}
 
-      {/* بطاقة هوية */}
       {sel && (
         <div className="fixed inset-0 z-30 flex items-center justify-center p-4" onClick={() => setSel(null)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative bg-[#131A22] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#D4AF3740] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[#12243A] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#D4AF3740] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-[#D4AF37] to-[#B49450] px-6 py-5 text-center">
               <button onClick={() => setSel(null)} className="absolute top-4 right-4 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white text-sm">✕</button>
               <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/10 flex items-center justify-center text-3xl shadow-lg">{icon(sel)}</div>
-              <h3 className="text-[#0A0F14] font-bold text-xl">{sel.display_name || sel.full_name}</h3>
+              <h3 className="text-[#0A1628] font-bold text-xl">{sel.display_name || sel.full_name}</h3>
             </div>
             <div className="p-5 text-center space-y-4">
               <p className="text-[#D4AF37] text-[10px] font-bold tracking-[0.3em]">⭐ {sel.public_id || 'BR-000'} ⭐</p>
               <div className="flex justify-center gap-4 text-xs text-[#B0C0D0]"><span>{sel.status || 'حي أطال الله بعمره'}</span>{sel.birth_year && <span>• ~ {age(sel.birth_year)} سنة</span>}</div>
-              <div className="space-y-3 text-xs bg-[#1A2535] rounded-2xl p-4">
+              <div className="space-y-3 text-xs bg-[#1A3055] rounded-2xl p-4">
                 <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الميلاد</span><span className="text-white font-bold">{sel.birth_year || 'غير مسجل'}</span></div>
                 <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">العمر</span><span className="text-white font-bold">{age(sel.birth_year) ? `~ ${age(sel.birth_year)} سنة` : 'غير مسجل'}</span></div>
                 <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الأب</span><span className="text-white font-bold">{getFather(persons, sel)}</span></div>
@@ -518,7 +512,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
                 <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الإخوة</span><span className="text-white font-bold text-left max-w-[60%]">{getRelatives(persons, sel, sel.father_id)}</span></div>
                 <div className="flex justify-between pb-2"><span className="text-[#8A95A4]">الأعمام</span><span className="text-white font-bold text-left max-w-[60%]">{getUncles(persons, sel)}</span></div>
               </div>
-              <div className="bg-[#1A2535] rounded-2xl p-4 border border-[#D4AF3715]"><p className="text-[10px] text-[#D4AF37] leading-relaxed font-heading text-center">📜 {getLineage(persons, sel)}</p></div>
+              <div className="bg-[#1A3055] rounded-2xl p-4 border border-[#D4AF3715]"><p className="text-[10px] text-[#D4AF37] leading-relaxed font-heading text-center">📜 {getLineage(persons, sel)}</p></div>
               <div className="flex justify-center mt-2">
                 <div style={{ width: 85, height: 85, borderRadius: '50%', border: '2.5px solid #D4AF3750', background: 'linear-gradient(135deg, #D4AF3710, #D4AF3705)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 900, color: '#D4AF37', lineHeight: 1.5, transform: 'rotate(-5deg)', boxShadow: '0 0 20px rgba(212,175,55,0.15)', letterSpacing: 0.5 }}>
                   <span>عشيرة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>العليان</span><span>قبيلة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>بني خالد</span>
