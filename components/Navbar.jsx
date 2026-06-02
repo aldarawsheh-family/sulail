@@ -13,10 +13,14 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("sulail_user_name");
     localStorage.removeItem("sulail_user_role");
+    localStorage.removeItem("sulail_branch_id");
+    
+    document.cookie = "sulail_token=; Path=/; Max-Age=0; Secure; SameSite=Lax";
     document.cookie = "sulail_user_name=; Path=/; Max-Age=0; Secure; SameSite=Lax";
     document.cookie = "sulail_user_role=; Path=/; Max-Age=0; Secure; SameSite=Lax";
+    document.cookie = "sulail_branch_id=; Path=/; Max-Age=0; Secure; SameSite=Lax";
+    
     setMenuOpen(false);
-    window.dispatchEvent(new Event("userUpdated"));
     window.location.href = "/";
   };
 

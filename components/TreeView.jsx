@@ -28,7 +28,6 @@ function countStatus(persons, person, keyword) {
   return kids.reduce((s, c) => s + countStatus(persons, c, keyword), 0) + self;
 }
 
-// صناديق أكبر
 const GEN = [
   { w: 170, h: 110, gapX: 50, gapY: 180 },
   { w: 140, h: 92,  gapX: 36, gapY: 150 },
@@ -74,13 +73,12 @@ function getUncles(persons, p) {
   return persons.filter(x => x.father_id === f.father_id && x.id !== f.id).map(x => x.display_name || x.full_name).join('، ') || 'لا يوجد';
 }
 
-// ألوان الأجيال
 const genColors = [
-  { bg: ['#1A2A4A', '#12243A'], stroke: '#D4AF37', text: '#FFD700', icon: '#D4AF37' },
-  { bg: ['#1F3050', '#152840'], stroke: '#C9A84C', text: '#E8D090', icon: '#C9A84C' },
-  { bg: ['#243656', '#1A2C46'], stroke: '#B89450', text: '#D0C080', icon: '#B89450' },
-  { bg: ['#293C5C', '#1F3050'], stroke: '#A08040', text: '#B8B070', icon: '#A08040' },
-  { bg: ['#2E4262', '#243656'], stroke: '#907030', text: '#A0A060', icon: '#907030' },
+  { bg: ['#1A2A4A', '#12243A'], stroke: '#D4AF37', text: '#FFFFFF', icon: '#D4AF37' },
+  { bg: ['#1F3050', '#152840'], stroke: '#C9A84C', text: '#F0F0F0', icon: '#C9A84C' },
+  { bg: ['#243656', '#1A2C46'], stroke: '#B89450', text: '#E8E8E8', icon: '#B89450' },
+  { bg: ['#293C5C', '#1F3050'], stroke: '#A08040', text: '#E0E0E0', icon: '#A08040' },
+  { bg: ['#2E4262', '#243656'], stroke: '#907030', text: '#D8D8D8', icon: '#907030' },
 ];
 
 function getGenColors(gen) { return genColors[Math.min(gen, genColors.length - 1)]; }
@@ -90,11 +88,7 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
-  const [pinching, setPinching] = useState(false);
-  const [hasMoved, setHasMoved] = useState(false);
   const ds = useRef({ x: 0, y: 0 });
-  const startPos = useRef({ x: 0, y: 0 });
-  const pinchDist = useRef(0);
   const cr = useRef(null);
   const cv = useRef(null);
   const [lay, setLay] = useState(null);
@@ -230,9 +224,9 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     ctx.textAlign = 'center';
     ctx.fillText(icon(node), node.x, node.y - iconSize * 0.5);
 
-    // الاسم - أكبر وأوضح
+    // الاسم - كل الأجيال بحجم 18
     ctx.fillStyle = g ? '#1A0A00' : gc.text;
-    const ns = node.gen === 0 ? 18 : node.gen === 1 ? 16 : node.gen === 2 ? 14 : 12;
+    const ns = 18;
     ctx.font = `bold ${ns}px 'Cairo', sans-serif`;
     ctx.fillText(node.display_name || node.full_name || '', node.x, node.y + ns * 0.35);
     ctx.textAlign = 'start';
@@ -286,63 +280,44 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     setTimeout(() => { setGlow([]); setGlowActive(false); setSel(p); }, anc.length * 500 + 1500);
   }
 
-  // اللمس - عتبة 15px للتمييز بين الضغط والسحب
-  const handlePointerDown = useCallback((e) => {
-    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    setHasMoved(false);
-    startPos.current = { x: e.clientX, y: e.clientY };
+  const handleCanvasClick = useCallback((e) => {
+    if (!lay || !cv.current || !cr.current) return;
+    const rect = cv.current.getBoundingClientRect();
+    const mx = (e.clientX - rect.left - pan.x) / scale;
+    const my = (e.clientY - rect.top - pan.y) / scale;
+    const found = findNodeAt(lay, mx, my);
+    if (!found) return;
+    if (found.type === 'collapse') { setCollapsed(prev => ({ ...prev, [found.node.id]: !prev[found.node.id] })); return; }
+    if (glowActive) return;
+    setSel(found);
+  }, [lay, pan.x, pan.y, scale, glowActive]);
+
+  const handleMouseDown = useCallback((e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
     setDragging(true);
     ds.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-    if (e.pointerType === 'touch') cv.current?.setPointerCapture(e.pointerId);
   }, [pan.x, pan.y]);
 
-  const handlePointerMove = useCallback((e) => {
+  const handleMouseMove = useCallback((e) => {
     if (!dragging) return;
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
-    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) setHasMoved(true);
     setPan({ x: e.clientX - ds.current.x, y: e.clientY - ds.current.y });
   }, [dragging]);
 
-  const handlePointerUp = useCallback((e) => {
-    setDragging(false);
-    if (e.pointerType === 'touch') cv.current?.releasePointerCapture(e.pointerId);
-    if (!hasMoved && lay && cv.current && cr.current) {
-      const rect = cv.current.getBoundingClientRect();
-      const mx = (e.clientX - rect.left - pan.x) / scale;
-      const my = (e.clientY - rect.top - pan.y) / scale;
-      const found = findNodeAt(lay, mx, my);
-      if (found) {
-        if (found.type === 'collapse') setCollapsed(prev => ({ ...prev, [found.node.id]: !prev[found.node.id] }));
-        else if (!glowActive) setSel(found);
-      }
-    }
-    setHasMoved(false);
-  }, [hasMoved, lay, pan.x, pan.y, scale, glowActive]);
+  const handleMouseUp = useCallback(() => { setDragging(false); }, []);
 
   const handleTouchStart = useCallback((e) => {
-    if (e.touches.length === 2) {
-      setPinching(true); setDragging(false);
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      pinchDist.current = Math.sqrt(dx * dx + dy * dy);
+    if (e.touches.length === 1 && !e.target.closest('button')) {
+      setDragging(true);
+      ds.current = { x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y };
     }
-  }, []);
+  }, [pan.x, pan.y]);
 
   const handleTouchMove = useCallback((e) => {
-    if (e.touches.length === 2 && pinching) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const delta = dist / pinchDist.current;
-      pinchDist.current = dist;
-      setScale(s => Math.max(0.3, Math.min(2.5, s * delta)));
-    }
-  }, [pinching]);
+    if (!dragging) return;
+    setPan({ x: e.touches[0].clientX - ds.current.x, y: e.touches[0].clientY - ds.current.y });
+  }, [dragging]);
 
-  const handleTouchEnd = useCallback((e) => {
-    if (e.touches.length < 2) setPinching(false);
-  }, []);
+  const handleTouchEnd = useCallback(() => { setDragging(false); }, []);
 
   function handleWheel(e) { e.preventDefault(); setScale(s => Math.max(0.3, Math.min(2.5, s + (e.deltaY < 0 ? 0.1 : -0.1)))); }
 
@@ -371,8 +346,8 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
 
   return (
     <div ref={cr} className="relative"
-      style={{ minHeight: '100vh', height: '100vh', background: 'linear-gradient(180deg, #0C1828 0%, #12243A 40%, #0C1828 100%)', position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', touchAction: 'none' }}
-      onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
+      style={{ minHeight: '100vh', height: '100vh', background: 'linear-gradient(180deg, #0C1828 0%, #12243A 40%, #0C1828 100%)', position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', cursor: dragging ? 'grabbing' : 'grab' }}
+      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
       onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
@@ -403,8 +378,8 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
         <button onClick={() => window.history.back()} className="w-12 h-12 bg-[#1A3055] rounded-xl shadow-lg text-[#D4AF37] text-lg border border-[#D4AF3740]">←</button>
       </div>
 
-      <canvas ref={cv}
-        style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: 'top left', transition: dragging ? 'none' : 'transform 0.3s ease', touchAction: 'none' }} />
+      <canvas ref={cv} onClick={handleCanvasClick}
+        style={{ position: 'absolute', top: 0, left: 0, transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: 'top left', transition: dragging ? 'none' : 'transform 0.3s ease' }} />
 
       {showStats && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4" onClick={() => { setShowStats(false); setShowAddRoot(false); }}>
