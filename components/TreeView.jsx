@@ -386,77 +386,236 @@ export default function TreeView({ persons, isAdmin, onEdit, onDelete, onAdd, br
     const g1 = sel, g2 = persons.find(p => p.id === g1?.father_id), g3 = persons.find(p => p.id === g2?.father_id), g4 = persons.find(p => p.id === g3?.father_id);
     return persons.some(p => p.father_id === personId && p.id !== g1?.id && p.id !== g2?.id && p.id !== g3?.id && p.id !== g4?.id);
   };
+// ========== واجهة الجوال: 4 أجيال هرمية + أختام + خيوط نور + توسيع ==========
+if (isMobile) {
+  const [mobileRoot, setMobileRoot] = useState(rootPerson);
+  const [expandedNodes, setExpandedNodes] = useState({});
 
-  // ========== واجهة الجوال ==========
-  if (isMobile) {
-    const g1 = sel || rootPerson;
-    const g2 = persons.find(p => p.id === g1?.father_id);
-    const g3 = persons.find(p => p.id === g2?.father_id);
-    const g4 = persons.find(p => p.id === g3?.father_id);
+  const toggleExpand = (personId) => {
+    setExpandedNodes(prev => ({ ...prev, [personId]: !prev[personId] }));
+  };
 
-    return (
-      <div className="w-full h-screen flex flex-col items-center justify-center bg-[#0C1828] px-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800/30 via-[#0C1828] to-[#0C1828] opacity-90 pointer-events-none"></div>
-        {[...Array(20)].map((_, i) => (<div key={i} className="absolute rounded-full bg-amber-500/20" style={{ width: Math.random()*3+1+'px', height: Math.random()*3+1+'px', top: Math.random()*100+'%', left: Math.random()*100+'%', animation: `pulse ${Math.random()*3+2}s ease-in-out infinite`, animationDelay: Math.random()*2+'s' }} />))}
+  // بناء عرض 4 أجيال من الجذر الحالي
+  const buildMobileLevels = (root) => {
+    if (!root) return [];
+    const levels = [[root]];
+    let currentLevel = [root];
+    
+    for (let i = 1; i < 4; i++) {
+      const nextLevel = [];
+      currentLevel.forEach(person => {
+        const children = getChildren(persons, person.id);
+        if (children.length > 0) {
+          nextLevel.push(...children);
+        }
+      });
+      if (nextLevel.length === 0) break;
+      levels.push(nextLevel);
+      currentLevel = nextLevel;
+    }
+    return levels;
+  };
 
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 text-center">
-          <div style={{ color: '#D4AF37', fontSize: 18, fontWeight: 900, letterSpacing: 8 }}>⚔️ سُلَيْل</div>
-        </div>
+  const levels = buildMobileLevels(mobileRoot || rootPerson);
 
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-[360px]">
-          <input type="text" placeholder="🔍 ابحث عن اسم..." value={q} onChange={e => search(e.target.value)}
-            className="w-full px-5 py-3 bg-[#12243A]/95 border-2 border-[#D4AF3740] rounded-2xl text-right text-sm outline-none text-white placeholder:text-[#8A95A4]" />
-          {qr.length > 0 && (
-            <div className="absolute top-full mt-2 left-0 right-0 bg-[#12243A]/98 border border-[#D4AF3730] rounded-2xl shadow-2xl overflow-hidden z-30 max-h-[40vh] overflow-y-auto">
-              {qr.map(p => (<button key={p.id} onClick={() => { setQ(''); setQr([]); setSel(p); }} className="w-full text-right px-4 py-3 text-sm hover:bg-[#D4AF3715] border-b border-[#D4AF3710] text-white flex items-center gap-3"><span className="text-lg">{icon(p)}</span><span>{getFullThreeNames(persons, p)}</span></button>))}
-            </div>
-          )}
-        </div>
+  // فحص إذا كان الشخص لديه ذرية (للزر [+])
+  const hasGrandchildren = (person) => {
+    const children = getChildren(persons, person.id);
+    return children.some(c => getChildren(persons, c.id).length > 0);
+  };
 
-        <div className="relative flex flex-col items-center justify-between h-full py-24 z-10 w-full max-w-xs">
-          <GlowingSeal person={g4} title="جد الجد" isActive={true} onClick={setSel} hasRelatives={checkRelatives(g4?.id)} onRelativesClick={setShowRelatives} />
-          {g4 && <div className="w-0.5 flex-grow bg-gradient-to-b from-amber-500 to-amber-500/40 shadow-[0_0_10px_#f59e0b]"></div>}
-          <GlowingSeal person={g3} title="الجد الأكبر" isActive={true} onClick={setSel} hasRelatives={checkRelatives(g3?.id)} onRelativesClick={setShowRelatives} />
-          {g3 && <div className="w-0.5 flex-grow bg-gradient-to-b from-amber-500/40 to-amber-500/20 shadow-[0_0_8px_#f59e0b]"></div>}
-          <GlowingSeal person={g2} title="الوالد" isActive={false} onClick={setSel} hasRelatives={checkRelatives(g2?.id)} onRelativesClick={setShowRelatives} />
-          {g2 && <div className="w-0.5 flex-grow bg-gradient-to-b from-amber-500/20 to-transparent"></div>}
-          <GlowingSeal person={g1} title="الاسم النشط" isActive={false} onClick={setSel} hasRelatives={checkRelatives(g1?.id)} onRelativesClick={setShowRelatives} />
-        </div>
+  // البحث
+  const [mq, setMQ] = useState('');
+  const [mqr, setMQR] = useState([]);
+  const mobileSearch = (v) => {
+    setMQ(v);
+    if (v.length < 1) { setMQR([]); return; }
+    const s = v.toLowerCase().trim();
+    const results = persons.filter(p => getFullThreeNames(persons, p).toLowerCase().includes(s));
+    setMQR(results.slice(0, 8));
+  };
 
-        {showRelatives && <RelativesPopup person={showRelatives} allPersons={persons} onClose={() => setShowRelatives(null)} onNodeClick={(p) => { setShowRelatives(null); setSel(p); }} />}
+  return (
+    <div className="w-full h-screen flex flex-col items-center bg-[#0C1828] relative overflow-hidden">
+      {/* خلفية المجرة */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800/20 via-[#0C1828] to-[#0C1828] opacity-90 pointer-events-none"></div>
+      {[...Array(15)].map((_, i) => (<div key={i} className="absolute rounded-full bg-amber-500/20" style={{ width: Math.random()*3+1+'px', height: Math.random()*3+1+'px', top: Math.random()*100+'%', left: Math.random()*100+'%', animation: `pulse ${Math.random()*3+2}s ease-in-out infinite`, animationDelay: Math.random()*2+'s' }} />))}
 
-        {sel && (
-          <div className="fixed inset-0 z-30 flex items-center justify-center p-4" onClick={() => setSel(null)}>
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div className="relative bg-[#12243A] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#D4AF3740] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-[#D4AF37] to-[#B49450] px-6 py-5 text-center">
-                <button onClick={() => setSel(null)} className="absolute top-4 right-4 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white text-sm">✕</button>
-                <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/10 flex items-center justify-center text-3xl shadow-lg">{icon(sel)}</div>
-                <h3 className="text-[#0A1628] font-bold text-xl">{sel.display_name || sel.full_name}</h3>
-              </div>
-              <div className="p-5 text-center space-y-4">
-                <p className="text-[#D4AF37] text-[10px] font-bold tracking-[0.3em]">⭐ {sel.public_id || 'BR-000'} ⭐</p>
-                <div className="flex justify-center gap-4 text-xs text-[#B0C0D0]"><span>{sel.status || 'حي أطال الله بعمره'}</span>{sel.birth_year && <span>• ~ {age(sel.birth_year)} سنة</span>}</div>
-                <div className="space-y-3 text-xs bg-[#1A3055] rounded-2xl p-4">
-                  <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الميلاد</span><span className="text-white font-bold">{sel.birth_year || 'غير مسجل'}</span></div>
-                  <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">العمر</span><span className="text-white font-bold">{age(sel.birth_year) ? `~ ${age(sel.birth_year)} سنة` : 'غير مسجل'}</span></div>
-                  <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الأب</span><span className="text-white font-bold">{getFather(persons, sel)}</span></div>
-                  <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الأبناء</span><span className="text-white font-bold text-left max-w-[60%]">{getRelatives(persons, null, sel.id)}</span></div>
-                  <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الإخوة</span><span className="text-white font-bold text-left max-w-[60%]">{getRelatives(persons, sel, sel.father_id)}</span></div>
-                  <div className="flex justify-between pb-2"><span className="text-[#8A95A4]">الأعمام</span><span className="text-white font-bold text-left max-w-[60%]">{getUncles(persons, sel)}</span></div>
-                </div>
-                <div className="bg-[#1A3055] rounded-2xl p-4 border border-[#D4AF3715]"><p className="text-[10px] text-[#D4AF37] leading-relaxed font-heading text-center">📜 {getLineage(persons, sel)}</p></div>
-                <div className="flex justify-center mt-2"><div style={{ width: 85, height: 85, borderRadius: '50%', border: '2.5px solid #D4AF3750', background: 'linear-gradient(135deg, #D4AF3710, #D4AF3705)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 900, color: '#D4AF37', lineHeight: 1.5, transform: 'rotate(-5deg)', boxShadow: '0 0 20px rgba(212,175,55,0.15)', letterSpacing: 0.5 }}><span>عشيرة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>العليان</span><span>قبيلة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>بني خالد</span></div></div>
-                {isAdmin && (<div className="flex gap-2 mt-4 justify-center flex-wrap">{['➕ ابن', '👬 أخ', '👆 أب', '✏️ تعديل', '🗑️ حذف'].map((l, i) => (<button key={i} className="text-white px-4 py-2 rounded-full text-[11px] font-bold shadow-lg" style={{ background: ['#4CAF50','#FF9800','#9C27B0','#2196F3','#E53935'][i] }}>{l}</button>))}</div>)}
-                <p className="text-center text-[8px] text-[#8A95A4] mt-3">⚠️ هذه الهوية خاصة بأفراد الفخذ وليست هوية رسمية</p>
-              </div>
-            </div>
+      {/* شعار */}
+      <div className="pt-3 pb-1 text-center z-20">
+        <div style={{ color: '#D4AF37', fontSize: 16, fontWeight: 900, letterSpacing: 6 }}>⚔️ سُلَيْل</div>
+      </div>
+
+      {/* بحث */}
+      <div className="w-[90%] max-w-[360px] z-20 mb-2">
+        <input type="text" placeholder="🔍 ابحث عن اسم..." value={mq} onChange={e => mobileSearch(e.target.value)}
+          className="w-full px-4 py-2.5 bg-[#12243A]/95 border-2 border-[#D4AF3740] rounded-2xl text-right text-xs outline-none text-white placeholder:text-[#8A95A4]" />
+        {mqr.length > 0 && (
+          <div className="absolute top-full mt-1 left-0 right-0 bg-[#12243A]/98 border border-[#D4AF3730] rounded-2xl shadow-2xl overflow-hidden z-30 max-h-[35vh] overflow-y-auto mx-[5%]">
+            {mqr.map(p => (<button key={p.id} onClick={() => { setMQ(''); setMQR([]); setMobileRoot(p); setSel(null); }} className="w-full text-right px-4 py-2.5 text-xs hover:bg-[#D4AF3715] border-b border-[#D4AF3710] text-white flex items-center gap-2"><span className="text-base">{icon(p)}</span><span>{getFullThreeNames(persons, p)}</span></button>))}
           </div>
         )}
-        <style jsx>{`@keyframes pulse{0%,100%{opacity:0.2}50%{opacity:0.7}}@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}.animate-slideUp{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}`}</style>
       </div>
-    );
-  }
+
+      {/* الشجرة الهرمية */}
+      <div className="flex-1 w-full overflow-y-auto px-2 pb-20 z-10">
+        <div className="flex flex-col items-center gap-1 py-2">
+          {levels.map((level, levelIdx) => (
+            <div key={levelIdx} className="w-full">
+              {/* خيط نور بين المستويات */}
+              {levelIdx > 0 && (
+                <div className="flex justify-center">
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-amber-500/60 to-amber-500/10 shadow-[0_0_6px_#f59e0b]"></div>
+                </div>
+              )}
+              
+              {/* صف المستوى */}
+              <div className={`flex flex-wrap justify-center gap-2 ${levelIdx === 0 ? '' : ''}`}>
+                {level.map(person => {
+                  const isExpanded = expandedNodes[person.id];
+                  const hasKids = getChildren(persons, person.id).length > 0;
+                  const hasGrandKids = hasGrandchildren(person);
+                  const isRoot = mobileRoot?.id === person.id;
+                  const showExpandBtn = hasGrandKids && levelIdx < 3;
+
+                  return (
+                    <div key={person.id} className="flex flex-col items-center">
+                      {/* ختم ذهبي */}
+                      <div
+                        onClick={() => setSel(person)}
+                        className={`w-[70px] h-[70px] rounded-full border-2 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all active:scale-95 shadow-xl relative ${
+                          isRoot
+                            ? 'border-amber-500 bg-gradient-to-b from-amber-950/50 to-slate-900 shadow-[0_0_20px_rgba(217,119,6,0.5)] text-amber-300'
+                            : 'border-slate-600 bg-slate-900/80 text-slate-200 hover:border-amber-500/50'
+                        }`}
+                      >
+                        <span className="text-[11px] mb-0.5">
+                          {person.status?.includes('شهيد') ? '⚔️' : person.status?.includes('انتقل') ? '🕊️' : '🍁'}
+                        </span>
+                        <span className="text-[11px] font-bold leading-tight truncate w-full px-0.5">
+                          {person.display_name || person.full_name || ''}
+                        </span>
+                      </div>
+
+                      {/* زر التوسيع */}
+                      {showExpandBtn && (
+                        <button
+                          onClick={() => toggleExpand(person.id)}
+                          className="mt-1 w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-xs font-bold hover:bg-amber-500/40 active:scale-90 transition z-10"
+                        >
+                          {isExpanded ? '−' : '+'}
+                        </button>
+                      )}
+
+                      {/* عرض موسع للذرية */}
+                      {isExpanded && showExpandBtn && (
+                        <div className="mt-2 flex flex-col items-center">
+                          <div className="w-0.5 h-4 bg-gradient-to-b from-amber-500/40 to-amber-500/10"></div>
+                          <ExpandedTree person={person} persons={persons} level={0} maxLevel={3} onNodeClick={setSel} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* هوية */}
+      {sel && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center p-4" onClick={() => setSel(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-[#12243A] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp border border-[#D4AF3740] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[#D4AF37] to-[#B49450] px-6 py-5 text-center">
+              <button onClick={() => setSel(null)} className="absolute top-4 right-4 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white text-sm">✕</button>
+              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/10 flex items-center justify-center text-3xl shadow-lg">{icon(sel)}</div>
+              <h3 className="text-[#0A1628] font-bold text-xl">{sel.display_name || sel.full_name}</h3>
+            </div>
+            <div className="p-5 text-center space-y-4">
+              <p className="text-[#D4AF37] text-[10px] font-bold tracking-[0.3em]">⭐ {sel.public_id || 'BR-000'} ⭐</p>
+              <div className="flex justify-center gap-4 text-xs text-[#B0C0D0]"><span>{sel.status || 'حي أطال الله بعمره'}</span>{sel.birth_year && <span>• ~ {age(sel.birth_year)} سنة</span>}</div>
+              <div className="space-y-3 text-xs bg-[#1A3055] rounded-2xl p-4">
+                <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الميلاد</span><span className="text-white font-bold">{sel.birth_year || 'غير مسجل'}</span></div>
+                <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">العمر</span><span className="text-white font-bold">{age(sel.birth_year) ? `~ ${age(sel.birth_year)} سنة` : 'غير مسجل'}</span></div>
+                <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الأب</span><span className="text-white font-bold">{getFather(persons, sel)}</span></div>
+                <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الأبناء</span><span className="text-white font-bold text-left max-w-[60%]">{getRelatives(persons, null, sel.id)}</span></div>
+                <div className="flex justify-between border-b border-[#D4AF3715] pb-2"><span className="text-[#8A95A4]">الإخوة</span><span className="text-white font-bold text-left max-w-[60%]">{getRelatives(persons, sel, sel.father_id)}</span></div>
+                <div className="flex justify-between pb-2"><span className="text-[#8A95A4]">الأعمام</span><span className="text-white font-bold text-left max-w-[60%]">{getUncles(persons, sel)}</span></div>
+              </div>
+              <div className="bg-[#1A3055] rounded-2xl p-4 border border-[#D4AF3715]"><p className="text-[10px] text-[#D4AF37] leading-relaxed font-heading text-center">📜 {getLineage(persons, sel)}</p></div>
+              <div className="flex justify-center mt-2"><div style={{ width: 85, height: 85, borderRadius: '50%', border: '2.5px solid #D4AF3750', background: 'linear-gradient(135deg, #D4AF3710, #D4AF3705)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 900, color: '#D4AF37', lineHeight: 1.5, transform: 'rotate(-5deg)', boxShadow: '0 0 20px rgba(212,175,55,0.15)', letterSpacing: 0.5 }}><span>عشيرة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>العليان</span><span>قبيلة</span><span style={{ fontSize: 10, color: '#D4AF37' }}>بني خالد</span></div></div>
+              {isAdmin && (<div className="flex gap-2 mt-4 justify-center flex-wrap">{['➕ ابن', '👬 أخ', '👆 أب', '✏️ تعديل', '🗑️ حذف'].map((l, i) => (<button key={i} onClick={() => { setSel(null); if (i===3) onEdit(sel); else if (i===4) onDelete(sel.id); else onAdd(['son','brother','father'][i], sel); }} className="text-white px-4 py-2 rounded-full text-[11px] font-bold shadow-lg" style={{ background: ['#4CAF50','#FF9800','#9C27B0','#2196F3','#E53935'][i] }}>{l}</button>))}</div>)}
+              <p className="text-center text-[8px] text-[#8A95A4] mt-3">⚠️ هذه الهوية خاصة بأفراد الفخذ وليست هوية رسمية</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* زر إحصائيات */}
+      <button onClick={() => setShowStats(true)} className="absolute bottom-4 right-4 z-20 bg-[#12243A]/90 border border-[#D4AF3740] text-[#D4AF37] px-3 py-2 rounded-xl text-xs font-bold">📊</button>
+
+      {/* إحصائيات */}
+      {showStats && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" onClick={() => setShowStats(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-[#12243A] rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slideUp border border-[#D4AF3740]" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[#D4AF37] to-[#B49450] px-6 py-4 text-center"><button onClick={() => setShowStats(false)} className="absolute top-4 right-4 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white text-sm">✕</button><h3 className="text-[#0A1628] font-bold text-lg">📊 إحصائيات الفرع</h3></div>
+            <div className="p-6 space-y-5">
+              {rootPerson && (
+                <div className="bg-[#1A3055] rounded-2xl p-4 text-center border border-[#D4AF3720]">
+                  <p className="text-[#8A95A4] text-xs mb-1">الجذر الرئيسي</p><p className="text-white font-bold text-lg">{rootPerson.display_name || rootPerson.full_name}</p>
+                  <div className="grid grid-cols-4 gap-2 mt-3">
+                    <div><p className="text-[#D4AF37] font-bold">{1 + countDescendants(persons, rootPerson)}</p><p className="text-[#8A95A4] text-[9px]">إجمالي</p></div>
+                    <div><p className="text-[#4CAF50] font-bold">{countStatus(persons, rootPerson, 'حي')}</p><p className="text-[#8A95A4] text-[9px]">أحياء</p></div>
+                    <div><p className="text-[#B0C0D0] font-bold">{countStatus(persons, rootPerson, 'انتقل')}</p><p className="text-[#8A95A4] text-[9px]">متوفون</p></div>
+                    <div><p className="text-[#E53935] font-bold">{countStatus(persons, rootPerson, 'شهيد')}</p><p className="text-[#8A95A4] text-[9px]">شهداء</p></div>
+                  </div>
+                  {isAdmin && (<div className="mt-3"><textarea value={branchStory} onChange={e => setBranchStory(e.target.value)} placeholder="نبذة عن الفرع الرئيسي..." rows={3} className="w-full px-4 py-2 bg-[#0A1628] border border-[#D4AF3720] rounded-xl text-right text-xs text-white placeholder:text-[#8A95A4] resize-none" /><button onClick={saveStory} className="bg-[#D4AF37] text-[#0A1628] px-4 py-2 rounded-xl text-xs font-bold mt-2">💾 حفظ</button>{storySaved && <span className="text-[#4CAF50] text-xs mr-2">✅ تم الحفظ</span>}</div>)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`@keyframes pulse{0%,100%{opacity:0.2}50%{opacity:0.7}}@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}.animate-slideUp{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}`}</style>
+    </div>
+  );
+}
+
+// ========== مكون الشجرة الموسعة ==========
+function ExpandedTree({ person, persons, level, maxLevel, onNodeClick }) {
+  if (level >= maxLevel) return null;
+  const children = persons.filter(p => p.father_id === person.id);
+  if (children.length === 0) return null;
+
+  return (
+    <div className="flex flex-col items-center">
+      {level > 0 && <div className="w-0.5 h-4 bg-gradient-to-b from-amber-500/30 to-amber-500/5"></div>}
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {children.map(child => (
+          <div key={child.id} className="flex flex-col items-center">
+            <div
+              onClick={() => onNodeClick(child)}
+              className="w-[55px] h-[55px] rounded-full border border-slate-600 bg-slate-900/80 flex flex-col items-center justify-center p-0.5 text-center cursor-pointer active:scale-95 shadow-lg hover:border-amber-500/50"
+            >
+              <span className="text-[10px]">
+                {child.status?.includes('شهيد') ? '⚔️' : child.status?.includes('انتقل') ? '🕊️' : '🍁'}
+              </span>
+              <span className="text-[9px] font-bold leading-tight truncate w-full px-0.5 text-slate-200">
+                {child.display_name || child.full_name || ''}
+              </span>
+            </div>
+            <ExpandedTree person={child} persons={persons} level={level + 1} maxLevel={maxLevel} onNodeClick={onNodeClick} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
   // ========== واجهة الكمبيوتر (Canvas) ==========
   return (
