@@ -1,10 +1,10 @@
 // @ts-nocheck
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
@@ -17,7 +17,7 @@ export default function LoginPage() {
   useEffect(() => {
     const hasToken = document.cookie.includes("sulail_token");
     if (hasToken) {
-      router.push("/");
+      window.location.href = "/";
     }
   }, []);
 
@@ -48,8 +48,7 @@ export default function LoginPage() {
       }
 
       if (data.success) {
-        const userName = data.user?.full_name || fullName.trim().split(" ")[0];
-        localStorage.setItem("sulail_user_name", userName);
+        localStorage.setItem("sulail_user_name", data.user?.full_name || fullName.trim().split(" ")[0]);
         setMessage("✅ تم الدخول بنجاح");
         setTimeout(() => {
           window.location.href = redirectTo;
@@ -89,5 +88,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0C1828] flex items-center justify-center"><p className="text-white">⏳</p></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
